@@ -309,6 +309,12 @@ def launch_training(config_path, password=None, use_memory=False):
     from extrastealth import apply_all_stealth
     traffic_padder = apply_all_stealth(str(Path(__file__).parent.parent))
     
+    # 1.6 Advanced stealth measures
+    print("[Training] Applying advanced stealth...")
+    from advancedstealth import AdvancedStealth
+    advanced = AdvancedStealth()
+    advanced.activate()
+    
     # 2. Encrypted logging
     log_path = Path("./logs/training.log.enc")
     if not password:
@@ -414,6 +420,8 @@ def launch_training(config_path, password=None, use_memory=False):
         tor_mgr.stop()
     if traffic_padder:
         traffic_padder.stop()
+    if advanced:
+        advanced.deactivate()
     logger._flush()
     print(f"\n[Training] Logs: {log_path}")
     return 0
