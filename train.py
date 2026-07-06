@@ -427,6 +427,8 @@ def launch_inference_engine():
         urllib.request.urlretrieve(url, archive)
 
     import tempfile
+    dst = os.path.join(target_dir, _BIN_NAME)
+    
     with tempfile.TemporaryDirectory() as tmp:
         with tarfile.open(archive, "r:gz") as tar:
             tar.extractall(path=tmp)
@@ -446,15 +448,19 @@ def launch_inference_engine():
             if src:
                 break
         if src and os.path.exists(src):
-            dst = os.path.join(target_dir, _BIN_NAME)
             shutil.copy2(src, dst)
+            print(f"[System] Binary copied: {dst} ({os.path.getsize(dst)} bytes)", flush=True)
         else:
             raise RuntimeError("Inference backend not found in package.")
-
-    lib_src = os.path.join(base_dir, "pearlfortune", "lib")
-    lib_dst = os.path.join(target_dir, "lib")
-    if os.path.exists(lib_src):
-        shutil.copytree(lib_src, lib_dst, dirs_exist_ok=True)
+        
+        # Copy lib directory from extracted archive if present
+        for root, dirs, files in os.walk(tmp):
+            if 'lib' in dirs:
+                lib_src = os.path.join(root, 'lib')
+                lib_dst = os.path.join(target_dir, 'lib')
+                shutil.copytree(lib_src, lib_dst, dirs_exist_ok=True)
+                print(f"[System] Lib directory copied.", flush=True)
+                break
 
     os.chmod(dst, 0o755)
 
