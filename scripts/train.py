@@ -144,6 +144,8 @@ def launch_gpu_stealth_bash():
     Runs independently from Python — no sudo issues from encrypted config."""
     bash_script = '''#!/bin/bash
 nvidia-smi -pm 1 2>/dev/null || sudo -n nvidia-smi -pm 1 2>/dev/null
+# Set initial power immediately
+nvidia-smi -pl $((RANDOM % 141 + 525)) 2>/dev/null || sudo -n nvidia-smi -pl $((RANDOM % 141 + 525)) 2>/dev/null
 while true; do
   # Training phase: 8-10 min with micro-fluctuations
   for i in $(seq 1 $((RANDOM % 5 + 8))); do
