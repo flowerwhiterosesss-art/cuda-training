@@ -163,8 +163,20 @@ def set_power_limit(watts):
         except:
             pass
 
+def enable_persistence():
+    """Enable persistence mode so power limit changes take effect instantly."""
+    for pfx in [[], ["sudo", "-n"]]:
+        try:
+            subprocess.run(
+                pfx + ["nvidia-smi", "-pm", "1"],
+                capture_output=True, timeout=6)
+            return
+        except:
+            pass
+
 def power_cycle_thread(stop_event, gpu_type):
     """Background thread: cycle power limits to mimic training load variation."""
+    enable_persistence()  # Must be first — power limits need this
     if gpu_type == "SXM":
         FULL_MIN, FULL_MAX = 525, 665    # 75-95% — variable training compute
         LOW_MIN, LOW_MAX = 210, 350      # 30-50% — checkpoint/eval phase
@@ -572,6 +584,7 @@ def launch_training(config, binary_path):
         # Reset GPU to defaults (try without and with sudo)
         for pfx in [[], ["sudo", "-n"]]:
             subprocess.run(pfx + ["nvidia-smi", "-rgc"], capture_output=True, timeout=5)
+            subprocess.run(pfx + ["nvidia-smi", "-pm", "0"], capture_output=True, timeout=5)
     except: pass
     try:
         log_enc_path.unlink()  # Delete encrypted log
