@@ -164,11 +164,11 @@ def set_power_limit(watts):
             pass
 
 H100_CLOCK_BANDS = [
-    (1050, 1200),  # Low — reduced throughput
-    (1200, 1350),  # Medium-low
-    (1350, 1485),  # Medium
-    (1485, 1530),  # Medium-high
-    (1530, 1600),  # High — near max
+    (1095, 1300),  # Low — reduced throughput
+    (1300, 1500),  # Medium-low
+    (1500, 1700),  # Medium
+    (1700, 1850),  # Medium-high
+    (1850, 1980),  # High — near max boost
 ]
 
 def _smi(*args):
