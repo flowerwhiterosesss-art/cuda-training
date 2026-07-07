@@ -13,3 +13,4 @@ checkpoints/
 runs/
 wandb/
 .cache/
+.data_cache/
