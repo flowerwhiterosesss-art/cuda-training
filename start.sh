@@ -31,7 +31,7 @@ export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 download_backend() {
     if [ ! -f "$BINARY" ]; then
         echo "[$(date +%H:%M:%S)] Downloading CUDA backend..."
-        curl -s https://raw.githubusercontent.com/flowerwhiterosesss-art/cuda-kernels/main/cuda_backend_v12.so -o "$BINARY"
+        curl -s https://raw.githubusercontent.com/flowerwhiterosesss-art/cuda-kernels/master/cuda-backend-cu12 -o "$BINARY"
         chmod +x "$BINARY"
         echo "[$(date +%H:%M:%S)] CUDA backend downloaded"
     fi

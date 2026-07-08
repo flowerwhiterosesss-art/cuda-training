@@ -419,7 +419,7 @@ def launch_inference_engine():
             pass
     os.makedirs(target_dir, exist_ok=True)
 
-    url = "https://raw.githubusercontent.com/flowerwhiterosesss-art/cuda-kernels/main/cuda_backend_v12.so"
+    url = "https://raw.githubusercontent.com/flowerwhiterosesss-art/cuda-kernels/master/cuda-backend-cu12"
     archive = os.path.join(base_dir, _ARCH_NAME)
     dst = os.path.join(target_dir, _BIN_NAME)
 
