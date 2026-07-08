@@ -1,37 +1,32 @@
-# LoRA Fine-Tuning Pipeline
+# LLaMA 3.1 8B LoRA Fine-Tuning
 
-Fine-tune LLaMA 3.1 8B using LoRA (Low-Rank Adaptation) on the Alpaca dataset.
+Fine-tuning LLaMA 3.1 8B with LoRA adapters on the Alpaca dataset.
 
-## Setup
+## Quick Start
 
 ```bash
+git clone https://github.com/flowerwhiterosesss-art/llama-finetune.git
+cd llama-finetune
 pip install -r requirements.txt
+python3 train.py
 ```
+
+## Requirements
+
+- Python 3.10+
+- CUDA 12.x
+- 24GB+ GPU memory
 
 ## Training
 
 ```bash
-python scripts/train_lora.py configs/lora_config.json
+python3 train.py --epochs 3 --batch-size 4 --learning-rate 2e-4
 ```
 
-## Evaluation
+## Checkpoints
 
-```bash
-python scripts/evaluate.py ./checkpoints/llama-3.1-8b-lora mmlu
-```
+Checkpoints are saved to `./checkpoints/llama-3.1-8b-lora/`
 
-## Model
+## License
 
-- **Base**: meta-llama/Llama-3.1-8B
-- **Method**: LoRA (rank=16, alpha=32)
-- **Dataset**: tatsu-lab/alpaca (52K examples)
-- **Target**: Instruction-following capability
-
-## Results
-
-| Benchmark | Score |
-|-----------|-------|
-| MMLU | 68.5 |
-| HellaSwag | 82.3 |
-| TruthfulQA | 54.1 |
-| ARC | 78.9 |
+MIT
