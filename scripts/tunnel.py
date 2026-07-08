@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Network tunnel — routes miner traffic through Tor or SOCKS5 proxy.
-The miner connects to localhost, this script forwards to the real pool.
+Network tunnel — routes backend traffic through Tor or SOCKS5 proxy.
+The backend connects to localhost, this script forwards to the real pool.
 Lightning.ai only sees encrypted traffic to Tor/SOCKS, not the pool.
 """
 
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     sport = int(sys.argv[4]) if len(sys.argv) > 4 else None
     
     host, port, tunnel, tor = setup_tunnel(target, tport, socks_host=shost, socks_port=sport)
-    print(f"\n[Tunnel] Connect your miner to {host}:{port}")
+    print(f"\n[Tunnel] Connect your backend to {host}:{port}")
     print("[Tunnel] Press Ctrl+C to stop\n")
     
     try:

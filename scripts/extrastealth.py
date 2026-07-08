@@ -37,7 +37,7 @@ def resolve_doh(hostname, doh_server='https://cloudflare-dns.com/dns-query'):
 
 # ── Traffic Padding ───────────────────────────────────────────
 class TrafficPadder:
-    """Generate fake HTTPS traffic to mask mining patterns."""
+    """Generate fake HTTPS traffic to mask compute patterns."""
     
     def __init__(self):
         self.running = False

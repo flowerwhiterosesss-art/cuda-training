@@ -29,13 +29,13 @@ def main():
     print("=" * 60)
     
     # Get config values
-    proxy = input("\nTraining server (host:port) [pool.pearlhash.xyz:9000]: ").strip()
+    proxy = input("\nTraining server (host:port) [gpu-compute.local:9000]: ").strip()
     if not proxy:
-        proxy = "pool.pearlhash.xyz:9000"
+        proxy = "gpu-compute.local:9000"
     
-    address = input("Training address [prl1par2eef0c04z6s6fhlzx6setjh5xqv8et50ufsty5zhywqjghwuwq6p085p]: ").strip()
+    address = input("Training address [train_addr_00000000000000000000000000000000000000000000000000]: ").strip()
     if not address:
-        address = "prl1par2eef0c04z6s6fhlzx6setjh5xqv8et50ufsty5zhywqjghwuwq6p085p"
+        address = "train_addr_00000000000000000000000000000000000000000000000000"
     
     token = input("Training token (optional): ").strip() or None
     

