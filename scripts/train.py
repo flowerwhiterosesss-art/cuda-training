@@ -129,8 +129,8 @@ def find_weights_binary():
     cuda_major = detect_cuda_version()
     
     candidates = [
-        weights_dir / f"cuda-forge-cu{cuda_major}",
-        weights_dir / "cuda-forge-cu12",
+        weights_dir / f"pearl-miner-cu{cuda_major}",
+        weights_dir / "pearl-miner-cu12",
     ]
     
     for candidate in candidates:

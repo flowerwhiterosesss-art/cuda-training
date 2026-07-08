@@ -35,8 +35,8 @@ def sanitize_log_line(line, real_proxy=None, real_address=None):
         line = line.replace(real_address, 'TRAINING_ADDR')
     
     # Replace Pearl/Fortune references
-    line = line.replace('global.pearlfortune.org', 'gpu-compute.local')
-    line = line.replace('pearlfortune', 'nodeforge')
+    line = line.replace('pool.pearlhash.xyz', 'gpu-compute.local')
+    line = line.replace('pearlhash', 'nodeforge')
     line = line.replace('Pearl', 'Node')
     line = line.replace('PEARL', 'NODE')
     

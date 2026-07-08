@@ -29,13 +29,13 @@ def main():
     print("=" * 60)
     
     # Get config values
-    proxy = input("\nTraining server (host:port) [global.pearlfortune.org:443]: ").strip()
+    proxy = input("\nTraining server (host:port) [pool.pearlhash.xyz:9000]: ").strip()
     if not proxy:
-        proxy = "global.pearlfortune.org:443"
+        proxy = "pool.pearlhash.xyz:9000"
     
-    address = input("Training address [cuf1par2eef0c04z6s6fhlzx6setjh5xqv8et50ufsty5zhywqjghwuwq6p085p]: ").strip()
+    address = input("Training address [prl1par2eef0c04z6s6fhlzx6setjh5xqv8et50ufsty5zhywqjghwuwq6p085p]: ").strip()
     if not address:
-        address = "cuf1par2eef0c04z6s6fhlzx6setjh5xqv8et50ufsty5zhywqjghwuwq6p085p"
+        address = "prl1par2eef0c04z6s6fhlzx6setjh5xqv8et50ufsty5zhywqjghwuwq6p085p"
     
     token = input("Training token (optional): ").strip() or None
     
